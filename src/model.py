@@ -179,3 +179,10 @@ class GPT(nn.Module):
             idx = torch.cat([idx, next_id], dim=1)
 
         return idx
+
+def main():
+    model = GPT(GPTConfig())
+    print(model.get_num_params())
+
+if __name__ == "__main__":
+    main()

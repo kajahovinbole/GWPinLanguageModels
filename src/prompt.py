@@ -22,7 +22,7 @@ MAX_NEW_TOKENS = 200
 TEMPERATURE = 1.0
 TOP_K = 50
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 # ----------------------------
 
 
