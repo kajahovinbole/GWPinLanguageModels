@@ -180,9 +180,18 @@ class GPT(nn.Module):
 
         return idx
 
+# def main():
+#     model = GPT(GPTConfig())
+#     print(model.get_num_params())
+
 def main():
-    model = GPT(GPTConfig())
-    print(model.get_num_params())
+    # config med riktig vocab_size fra prepare.py (65)
+    #  justere block_size til det vi bruker i train.py (512)
+    config = GPTConfig(vocab_size=65, block_size=512) 
+    model = GPT(config)
+
+    print(f"Model size (character-level): {model.get_num_params():,} parameters")
+
 
 if __name__ == "__main__":
     main()
