@@ -18,6 +18,8 @@ import torch
 
 from model import GPTConfig, GPT
 
+from codecarbon import EmissionsTracker
+
 # -----------------------------------------------------------------------------
 # Experiment configuration
 
@@ -46,6 +48,8 @@ MAX_ITERS = 2000        # Total number of training iterations. The more iteratio
 LEARNING_RATE = 3e-4    # the standard starting learning rate, often good enough for a first try
 WEIGHT_DECAY = 0.1      # L2 Regularization
 GRAD_CLIP = 1.0         # To prevent exploding gradients
+
+
 
 # -----------------------------------------------------------------------------
 
@@ -126,9 +130,19 @@ def main():
     )
 
     # (optional) uncomment this for printing model size once
-    # print(f"Device: {DEVICE}")
-    # print(f"Model parameters: {model.get_num_params():,}")
-    # print(f"Training for {MAX_ITERS} iterations | batch={BATCH_SIZE} | block={BLOCK_SIZE}")
+    print(f"Device: {DEVICE}")
+    print(f"Model parameters: {model.get_num_params():,}")
+    print(f"Training for {MAX_ITERS} iterations | batch={BATCH_SIZE} | block={BLOCK_SIZE}")
+
+    # initialize the CodeCarbon tracker
+    tracker = EmissionsTracker(
+        project_name="slm_training_baseline", # change this for each scenario
+        output_dir=OUT_DIR,                   # saving the results in output directory
+        measure_power_secs=10,                # How often to measure (every 10 seconds)
+    )
+    tracker.start()
+
+    print("CodeCarbon tracker started. Training begins...")
 
     t0 = time.time()
     for it in range(MAX_ITERS + 1):
@@ -171,6 +185,11 @@ def main():
             print(f"iter {it:5d} | loss {loss.item():.4f}")
 
     print("Training completed.")
+
+
+# stopping the CodeCarbon tracker and getting the emissions
+    emissions: float = tracker.stop()
+    print(f"CodeCarbon estimated emissions: {emissions} kg CO2eq")
 
     # Save final checkpoint
     if SAVE_CHECKPOINT:
