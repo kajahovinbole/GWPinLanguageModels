@@ -12,6 +12,7 @@ import os
 import time
 import pickle
 from dataclasses import asdict
+import argparse
 
 import numpy as np
 import torch
@@ -42,7 +43,7 @@ BIAS = True
 SEED = 1
 DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"          # If you can, try also seeing consumption when using gpu (change this to 'cuda' if torch.cuda.is_available() else 'cpu')
 DTYPE = "float32"       
-BATCH_SIZE = 32         # Number of sequences processed in parallel.
+BATCH_SIZE = 16         # Number of sequences processed in parallel.
 BLOCK_SIZE = 512        # Maximum context length for predictions (e.g. 128 or 256). The longer the block size, the more memory and compute it requires, but it can also lead to better performance.
 MAX_ITERS = 2000        # Total number of training iterations. The more iterations, the better the model can perform, but it also takes more time and energy to train.
 LEARNING_RATE = 3e-4    # the standard starting learning rate, often good enough for a first try
@@ -102,6 +103,16 @@ def save_checkpoint(out_dir: str, model: GPT, optimizer: torch.optim.Optimizer, 
     torch.save(ckpt, os.path.join(out_dir, "ckpt.pt"))
 
 def main():
+    # argument parsing for scenario name and training parameters
+    parser = argparse.ArgumentParser(description="Train NanoGPT")
+    parser.add_argument("--scenario_name", type=str, default="baseline", help="Name of the scenario for logging")
+    parser.add_argument("--max_iters", type=int, default=2000, help="Number of training iterations")
+    parser.add_argument("--n_layer", type=int, default=4, help="Number of transformer layers")
+    parser.add_argument("--n_head", type=int, default=4, help="Number of attention heads")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size")
+    args = parser.parse_args()
+
+
     os.makedirs(OUT_DIR, exist_ok=True)
     set_seed(SEED)
 
@@ -111,8 +122,8 @@ def main():
     cfg = GPTConfig(
         block_size=BLOCK_SIZE,
         vocab_size=vocab_size,
-        n_layer=N_LAYER,
-        n_head=N_HEAD,
+        n_layer=args.n_layer,
+        n_head=args.n_head,
         n_embd=N_EMBD,
         dropout=DROPOUT,
         bias=BIAS,
@@ -130,35 +141,47 @@ def main():
     )
 
     # (optional) uncomment this for printing model size once
-    print(f"Device: {DEVICE}")
-    print(f"Model parameters: {model.get_num_params():,}")
-    print(f"Training for {MAX_ITERS} iterations | batch={BATCH_SIZE} | block={BLOCK_SIZE}")
+    # print(f"Device: {DEVICE}")
+    # print(f"Model parameters: {model.get_num_params():,}")
+    # print(f"Training for {MAX_ITERS} iterations | batch={BATCH_SIZE} | block={BLOCK_SIZE}")
+
+    print(f"\n--- RUNNING SCENARIO: {args.scenario_name} ---")
+    print(f"Device: {DEVICE} | Params: {model.get_num_params():,} | Layers: {args.n_layer} | Batch: {args.batch_size}")
+    print(f"Training for {args.max_iters} iterations | block={BLOCK_SIZE}\n")
 
     # initialize the CodeCarbon tracker
     tracker = EmissionsTracker(
-        project_name="slm_training_baseline", # change this for each scenario
+        project_name=args.scenario_name,              # name of the scenario for logging
         output_dir=OUT_DIR,                   # saving the results in output directory
         measure_power_secs=10,                # How often to measure (every 10 seconds)
     )
     tracker.start()
 
+    log_file_path = os.path.join(OUT_DIR, f"{args.scenario_name}_loss.txt") # <-- Oppdatert
+    with open(log_file_path, "w") as f:
+        f.write("iter,train_loss,val_loss\n")
+
     print("CodeCarbon tracker started. Training begins...")
 
     t0 = time.time()
-    for it in range(MAX_ITERS + 1):
+    for it in range(args.max_iters + 1):
         # periodic evaluation
         if it % EVAL_INTERVAL == 0:
-            losses = estimate_loss(model, DATA_DIR, BLOCK_SIZE, BATCH_SIZE, DEVICE, EVAL_ITERS)
+            losses = estimate_loss(model, DATA_DIR, BLOCK_SIZE, args.batch_size, DEVICE, EVAL_ITERS)
             dt = time.time() - t0
             print(f"iter {it:5d} | train loss {losses['train']:.4f} | val loss {losses['val']:.4f} | elapsed {dt:.1f}s")
+
+            # log losses to file
+            with open(log_file_path, "a") as f:
+                f.write(f"{it},{losses['train']:.4f},{losses['val']:.4f}\n")
 
             if SAVE_CHECKPOINT and it > 0:
                 config_dump = {
                     "data_dir": DATA_DIR,
                     "train": {
-                        "batch_size": BATCH_SIZE,
+                        "batch_size": args.batch_size, 
                         "block_size": BLOCK_SIZE,
-                        "max_iters": MAX_ITERS,
+                        "max_iters": args.max_iters,
                         "learning_rate": LEARNING_RATE,
                         "weight_decay": WEIGHT_DECAY,
                         "grad_clip": GRAD_CLIP,
@@ -170,7 +193,7 @@ def main():
                 save_checkpoint(OUT_DIR, model, optimizer, it, config_dump)
 
         # training step
-        x, y = get_batch("train", DATA_DIR, BLOCK_SIZE, BATCH_SIZE, DEVICE)
+        x, y = get_batch("train", DATA_DIR, BLOCK_SIZE, args.batch_size, DEVICE)
         _, loss = model(x, y)
 
         optimizer.zero_grad(set_to_none=True)
@@ -196,9 +219,9 @@ def main():
         config_dump = {
             "data_dir": DATA_DIR,
             "train": {
-                "batch_size": BATCH_SIZE,
+                "batch_size": args.batch_size,
                 "block_size": BLOCK_SIZE,
-                "max_iters": MAX_ITERS,
+                "max_iters": args.max_iters,
                 "learning_rate": LEARNING_RATE,
                 "weight_decay": WEIGHT_DECAY,
                 "grad_clip": GRAD_CLIP,
@@ -207,7 +230,7 @@ def main():
             },
             "model": asdict(cfg),
         }
-        save_checkpoint(OUT_DIR, model, optimizer, MAX_ITERS, config_dump)
+        save_checkpoint(OUT_DIR, model, optimizer, args.max_iters, config_dump)
 
 if __name__ == "__main__":
     main()

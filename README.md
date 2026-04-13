@@ -195,3 +195,10 @@ After completing this case study, you should be able to:
 - Focus on **sustainability insights**, not deep learning optimization  
 
 If you have questions about the code structure or the scope of allowed modifications, refer to the assignment description or contact the course TAs.
+
+
+## To run all experiments:
+
+'''bash
+sudo python run_experiments.py
+
