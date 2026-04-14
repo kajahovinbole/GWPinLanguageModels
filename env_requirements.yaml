@@ -16,7 +16,6 @@ dependencies:
   - pytorch
   - torchvision
   - torchaudio
-  - cpuonly
 
   # Notebooks (optional but useful)
   - ipykernel
