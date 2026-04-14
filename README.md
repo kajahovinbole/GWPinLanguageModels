@@ -199,6 +199,12 @@ If you have questions about the code structure or the scope of allowed modificat
 
 ## To run all experiments:
 
-'''bash
-sudo python run_experiments.py
+```bash
+python src/run_experiments.py
+```
 
+## To run inference scenarios (Scenario 4 and 5):
+
+```bash
+python src/run_inference_experiments.py --ckpt_path out/ckpt_baseline.pt
+```

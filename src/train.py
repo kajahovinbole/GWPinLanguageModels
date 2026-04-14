@@ -116,6 +116,16 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     set_seed(SEED)
 
+    # Ensure dataset files exist before training starts.
+    required_files = ["train.bin", "val.bin", "meta.pkl"]
+    missing = [f for f in required_files if not os.path.exists(os.path.join(DATA_DIR, f))]
+    if missing:
+        missing_str = ", ".join(missing)
+        raise FileNotFoundError(
+            f"Missing required data files in '{DATA_DIR}': {missing_str}. "
+            f"Run 'python data/prepare.py' first."
+        )
+
     meta = load_meta(DATA_DIR)
     vocab_size = meta["vocab_size"] if meta and "vocab_size" in meta else 50304
 
@@ -191,6 +201,16 @@ def main():
                     "model": asdict(cfg),
                 }
                 save_checkpoint(OUT_DIR, model, optimizer, it, config_dump)
+                # Keep a scenario-specific snapshot to avoid overwriting between runs.
+                torch.save(
+                    {
+                        "iter_num": it,
+                        "model_state": model.state_dict(),
+                        "optim_state": optimizer.state_dict(),
+                        "config": config_dump,
+                    },
+                    os.path.join(OUT_DIR, f"ckpt_{args.scenario_name}.pt"),
+                )
 
         # training step
         x, y = get_batch("train", DATA_DIR, BLOCK_SIZE, args.batch_size, DEVICE)
@@ -231,6 +251,16 @@ def main():
             "model": asdict(cfg),
         }
         save_checkpoint(OUT_DIR, model, optimizer, args.max_iters, config_dump)
+        # Also save per-scenario final checkpoint.
+        torch.save(
+            {
+                "iter_num": args.max_iters,
+                "model_state": model.state_dict(),
+                "optim_state": optimizer.state_dict(),
+                "config": config_dump,
+            },
+            os.path.join(OUT_DIR, f"ckpt_{args.scenario_name}.pt"),
+        )
 
 if __name__ == "__main__":
     main()
