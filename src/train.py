@@ -19,7 +19,7 @@ import torch
 
 from model import GPTConfig, GPT
 
-from codecarbon import EmissionsTracker
+from codecarbon import OfflineEmissionsTracker
 
 # -----------------------------------------------------------------------------
 # Experiment configuration
@@ -160,7 +160,7 @@ def main():
     print(f"Training for {args.max_iters} iterations | block={BLOCK_SIZE}\n")
 
     # initialize the CodeCarbon tracker
-    tracker = EmissionsTracker(
+    tracker = OfflineEmissionsTracker(
         project_name=args.scenario_name,              # name of the scenario for logging
         output_dir=OUT_DIR,                   # saving the results in output directory
         measure_power_secs=10,                # How often to measure (every 10 seconds)
