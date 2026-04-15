@@ -31,17 +31,23 @@ def main():
     
     try:
         # 0. Baseline
-        run_scenario(name="baseline")
+        run_scenario(name="baseline", max_iters=2000, n_layer=4, n_head=4, batch_size=16)
         
         # 1. Scenario 1: Varying training duration 
-        run_scenario(name="scenario_1_short", max_iters=1000)
-        run_scenario(name="scenario_1_long", max_iters=3000)
+        run_scenario(name="scenario_1_1000", max_iters=1000)
+        run_scenario(name="scenario_1_1500", max_iters=1500)
+        run_scenario(name="scenario_1_2500", max_iters=2500)
+        run_scenario(name="scenario_1_3000", max_iters=3000)
 
         # 2. Scenario 2: Model scaling
-        run_scenario(name="scenario_2_scaled_arch", n_layer=8, n_head=8)
-        
+        run_scenario(name="scenario_2_scaled_1", n_layer=2, n_head=2)
+        run_scenario(name="scenario_2_scaled_2", n_layer=8, n_head=8)
+        run_scenario(name="scenario_2_scaled_3", n_layer=12, n_head=12)
+
         # 3. Scenario 3: Varying batch size
         run_scenario(name="scenario_3_batch_8", batch_size=8)
+        run_scenario(name="scenario_3_batch_12", batch_size=12)
+        run_scenario(name="scenario_3_batch_24", batch_size=24)
         run_scenario(name="scenario_3_batch_32", batch_size=32)
 
         print("\nALL EXPERIMENTS COMPLETED!")
