@@ -31,7 +31,7 @@ def main():
     
     try:
         # 0. Baseline
-        run_scenario(name="baseline", max_iters=2000, n_layer=4, n_head=4, batch_size=16)
+        run_scenario(name="baseline")
         
         # 1. Scenario 1: Varying training duration 
         run_scenario(name="scenario_1_1000", max_iters=1000)
@@ -42,7 +42,7 @@ def main():
         # 2. Scenario 2: Model scaling
         run_scenario(name="scenario_2_scaled_1", n_layer=2, n_head=2)
         run_scenario(name="scenario_2_scaled_2", n_layer=8, n_head=8)
-        run_scenario(name="scenario_2_scaled_3", n_layer=12, n_head=12)
+        run_scenario(name="scenario_2_scaled_3", n_layer=16, n_head=16)
 
         # 3. Scenario 3: Varying batch size
         run_scenario(name="scenario_3_batch_8", batch_size=8)
