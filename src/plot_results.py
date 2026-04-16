@@ -124,12 +124,14 @@ def aggregate_inference(rows: List[dict], scenario_name: str, x_field: str) -> L
     return aggregates
 
 def make_plot(curves, metrics, scenario4, scenario5, output_img):
-    baseline = next((m for m in metrics if m.scenario == "baseline"), None)
+    baseline_train = next((m for m in metrics if m.scenario == "baseline"), None)
     
     fig, axes = plt.subplots(1, 3, figsize=(20, 6))
     fig.suptitle("Task 2 Summary: Training Trade-off and Inference Scaling", fontsize=16, fontweight='bold')
 
+    # ---------------------------------------------------------
     # 1) Training trade-off
+    # ---------------------------------------------------------
     ax = axes[0]
     metric_map = {m.scenario: m for m in metrics}
     for scenario in [s for s in SCENARIOS if s in metric_map]:
@@ -144,13 +146,15 @@ def make_plot(curves, metrics, scenario4, scenario5, output_img):
     ax.set_ylabel("Final Validation Loss")
     ax.grid(alpha=0.3)
 
+    # ---------------------------------------------------------
     # 2) Relative training change
+    # ---------------------------------------------------------
     ax = axes[1]
-    if baseline:
+    if baseline_train:
         labels, deltas = [], []
         for scenario in [s for s in SCENARIOS if s in metric_map and s != "baseline"]:
             labels.append(SCENARIO_LABELS[scenario])
-            deltas.append(100.0 * (metric_map[scenario].emissions_kg - baseline.emissions_kg) / baseline.emissions_kg)
+            deltas.append(100.0 * (metric_map[scenario].emissions_kg - baseline_train.emissions_kg) / baseline_train.emissions_kg)
         ax.bar(range(len(labels)), deltas, color="#4C78A8")
         ax.set_xticks(range(len(labels)))
         ax.set_xticklabels(labels, rotation=45, ha='right')
@@ -159,21 +163,33 @@ def make_plot(curves, metrics, scenario4, scenario5, output_img):
         ax.set_ylabel("CO2e change (%)")
         ax.grid(axis="y", alpha=0.3)
 
-    # 3) Inference scaling
+    # ---------------------------------------------------------
+    # 3) Relative Inference scaling
+    # ---------------------------------------------------------
     ax = axes[2]
     if scenario4 and scenario5:
+        # Finn Baseline Inference (Target: Input ~128, Output 200)
+        # S4 varierer input, har output 200. Vi finner punktet nærmest 128.
+        s4_closest_to_baseline = min(scenario4, key=lambda r: abs(r.x_value - 128))
+        baseline_inference_emissions = s4_closest_to_baseline.mean_emissions_kg
+
         x4 = [r.x_value for r in scenario4]
-        em4 = [r.mean_emissions_kg * 1_000_000 for r in scenario4] # Konvertert til mg
+        # Regn ut prosentvis forskjell fra baseline for S4
+        deltas4 = [100.0 * (r.mean_emissions_kg - baseline_inference_emissions) / baseline_inference_emissions for r in scenario4]
+        
         x5 = [r.x_value for r in scenario5]
-        em5 = [r.mean_emissions_kg * 1_000_000 for r in scenario5]
+        # Regn ut prosentvis forskjell fra baseline for S5
+        deltas5 = [100.0 * (r.mean_emissions_kg - baseline_inference_emissions) / baseline_inference_emissions for r in scenario5]
         
         pos4 = list(range(len(x4)))
         pos5 = [len(x4) + 1 + i for i in range(len(x5))]
 
-        ax.bar(pos4, em4, color="#72B7B2", alpha=0.9, label="S4 (Prompt Length)")
-        ax.bar(pos5, em5, color="#F58518", alpha=0.9, label="S5 (Output Length)")
-        ax.set_title("Inference Scaling")
-        ax.set_ylabel("Mean emissions (mg CO2e)")
+        ax.bar(pos4, deltas4, color="#72B7B2", alpha=0.9, label="S4 (Varying Prompt Length)")
+        ax.bar(pos5, deltas5, color="#F58518", alpha=0.9, label="S5 (Varying Output Length)")
+        
+        ax.axhline(0, color="black", linewidth=1.2)
+        ax.set_title(f"Inference Emissions vs Baseline (%) \n(Baseline: ~128 in, 200 out)")
+        ax.set_ylabel("CO2e change (%)")
         ax.grid(axis="y", alpha=0.3)
         ax.set_xticks(pos4 + pos5)
         ax.set_xticklabels([f"In:{v}" for v in x4] + [f"Out:{v}" for v in x5], rotation=45, ha='right')
